@@ -28,6 +28,26 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SH110X.h>
 
+#include <WiFi.h>
+#include <HTTPClient.h>
+// #include "HTTPSRedirect.h"
+#include <WiFiClientSecureBearSSL.h>
+
+const char* wifi_ssid = "HOMEWiFiBR";
+const char* wifi_password = "PLDTWiFiBRTorinoFamily_2023";
+String requestName = "https://script.google.com/macros/s/AKfycbzUigA_4Lku71Xcwj1bIo5QqDBuLPZjbzys90cKQkwBYCMq6dtXaJ3a3yxF3rj97golig/exec?";
+String medName = "";
+String compNum = "";
+// const char *GScriptId = “AKfycbxD75rbn5gBMBx5AKK_wttlbJtXRxRUr4TYZ1fG0iIPd_ZuCIVgkMmnoQclq71v53hMSA”;
+
+// const char* host = "script.google.com";
+// const char* googleRedirHost = "script.googleusercontent.com";
+
+// const int httpsPort =  443;
+// HTTPSRedirect client(httpsPort);
+
+// String url = String(“/macros/s/”) + GScriptId + “/exec?”;
+
 // Servo PINS and setup
 #define MED_1 19 // ESP32 pin GPIO19 connected to servo motor
 #define MED_2 18 // ESP32 pin GPIO18 connected to servo motor
@@ -52,6 +72,10 @@ int inputPin = 36;
 int buzzerPin = 2;
 
 void setup() {
+  std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
+  client->setInsecure();
+  HTTPClient http;
+  http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
   // Initialize serial and wait for port to open:
   Serial.begin(9600);
   // This delay gives the chance to wait for a Serial Monitor without blocking if none is found
@@ -96,7 +120,8 @@ void setup() {
   triggerPill1 = LOW;
   triggerPill2 = LOW;
   triggerPill3 = LOW;
-
+    //Initialize Wifi Connection
+    WiFi.begin(wifi_ssid, wifi_password);
 }
 
 void loop() {
@@ -122,6 +147,7 @@ void initializeAllServo()
 // each pill active, print in OLED (TBC)
 void checkMedSchedule(void)
 {
+  HTTPClient http;
   if (pill1.isActive())
   {
     digitalWrite(buzzerPin, HIGH);
@@ -168,7 +194,26 @@ void checkMedSchedule(void)
     display.setCursor(0, 40);
     // Display static text
     display.print("Clopidogrel taken ");
-
+      int httpcode = http.GET();
+      if(httpcode > 0) {
+        Serial.println("Request okay");
+      } else {
+        Serial.println("Request failed");
+        Serial.println(http.errorToString(httpcode).c_str());
+      }
+      medName = "Clopidogrel";
+      compNum = "1";
+      
+      String requestPath = requestName + "medicinename=" + medName + "&compartmentnumber=" + compNum;
+      http.begin(requestPath.c_str());
+      http.end();
+      Serial.println(requestPath.c_str());
+      
+    //   if (!client.connected()){
+    //         Serial.println(“Connecting to client again…”);
+    //         client.connect(requestPath.c_str(), httpsPort);
+    // }
+    // client.printRedir(requestPath.c_str(), host, googleRedirHost);
   }
 
   if (pill2.isActive())
@@ -213,6 +258,12 @@ void checkMedSchedule(void)
     display.setCursor(0, 40);
     // Display static text
     display.print("Rosuvastatin taken ");
+      medName = "Rosuvastatin";
+      compNum = "2";
+      
+      String requestPath = requestName + "medicinename=" + medName + "&compartmentnumber=" + compNum;
+      http.begin(requestPath.c_str());
+      http.end();
 
   }
 
@@ -258,6 +309,12 @@ void checkMedSchedule(void)
     display.setCursor(0, 40);
     // Display static text
     display.print("Ranolazine taken");
+      medName = "Ranolazine";
+      compNum = "3";
+      
+      String requestPath = requestName + "medicinename=" + medName + "&compartmentnumber=" + compNum;
+      http.begin(requestPath.c_str());
+      http.end();
 
 
   }
@@ -270,8 +327,8 @@ void checkMedSchedule(void)
 
 void onSchedulerChange()  {
   // Add your code here to act upon Scheduler change
-  
-  
+
+
 }
 
 
