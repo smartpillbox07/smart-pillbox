@@ -144,6 +144,9 @@ int inputPin = 36;
 // Buzzer for Alarm
 int buzzerPin = 2;
 WiFiMulti WiFiMulti;
+medname = "";
+compnum = "";
+request = "https://script.google.com/macros/s/AKfycbxD75rbn5gBMBx5AKK_wttlbJtXRxRUr4TYZ1fG0iIPd_ZuCIVgkMmnoQclq71v53hMSA/exec";
 void setup() {
 
   WiFi.mode(WIFI_STA);
@@ -199,7 +202,36 @@ void setup() {
 
 void loop() {
   WiFiClientSecure *client = new WiFiClientSecure;
-  if(client) {
+  client->setInsecure();
+
+  ArduinoCloud.update();
+
+  // Your code here
+  checkMedSchedule();
+
+}
+
+void initializeAllServo()
+{
+  servoMed1.write(0);
+  delay(50);
+  servoMed2.write(0);
+  delay(50);
+  servoMed3.write(0);
+  delay(50);
+}
+
+// checking the schedule of each MedPill
+// set the duration on the widget for 1 second
+// each pill active, print in OLED (TBC)
+void checkMedSchedule(void)
+{
+  HTTPClient http;
+  if (pill1.isActive())
+  {
+    medname = "Clopidogrel";
+    compnum = "1";
+    if(client) {
     client -> setCACert(rootCACertificate);
 
     {
@@ -207,7 +239,7 @@ void loop() {
       HTTPClient https;
   
       Serial.print("[HTTPS] begin...\n");
-      if (https.begin(*client, "https://jigsaw.w3.org/HTTP/connection.html")) {  // HTTPS
+      if (https.begin(*client, request + "?medicinename=" + medname + "&compartmentnumber=" + compnum)) {  // HTTPS
         Serial.print("[HTTPS] GET...\n");
         // start connection and send HTTP header
         int httpCode = https.GET();
@@ -238,32 +270,6 @@ void loop() {
   } else {
     Serial.println("Unable to create client");
   }
-
-  ArduinoCloud.update();
-
-  // Your code here
-  checkMedSchedule();
-
-}
-
-void initializeAllServo()
-{
-  servoMed1.write(0);
-  delay(50);
-  servoMed2.write(0);
-  delay(50);
-  servoMed3.write(0);
-  delay(50);
-}
-
-// checking the schedule of each MedPill
-// set the duration on the widget for 1 second
-// each pill active, print in OLED (TBC)
-void checkMedSchedule(void)
-{
-  HTTPClient http;
-  if (pill1.isActive())
-  {
     digitalWrite(buzzerPin, HIGH);
 
     triggerPill1 = HIGH; // Activate Trigger to send push notification and email
@@ -312,6 +318,47 @@ void checkMedSchedule(void)
 
   if (pill2.isActive())
   {
+    medname = "Rosuvastatin";
+    compnum = "2";
+    if(client) {
+    client -> setCACert(rootCACertificate);
+
+    {
+      // Add a scoping block for HTTPClient https to make sure it is destroyed before WiFiClientSecure *client is 
+      HTTPClient https;
+  
+      Serial.print("[HTTPS] begin...\n");
+      if (https.begin(*client, request + "?medicinename=" + medname + "&compartmentnumber=" + compnum)) {  // HTTPS
+        Serial.print("[HTTPS] GET...\n");
+        // start connection and send HTTP header
+        int httpCode = https.GET();
+  
+        // httpCode will be negative on error
+        if (httpCode > 0) {
+          // HTTP header has been send and Server response header has been handled
+          Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
+  
+          // file found at server
+          if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+            String payload = https.getString();
+            Serial.println(payload);
+          }
+        } else {
+          Serial.printf("[HTTPS] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
+        }
+  
+        https.end();
+      } else {
+        Serial.printf("[HTTPS] Unable to connect\n");
+      }
+
+      // End extra scoping block
+    }
+  
+    delete client;
+  } else {
+    Serial.println("Unable to create client");
+  }
     digitalWrite(buzzerPin, HIGH);
 
     triggerPill2 = HIGH; // Activate Trigger to send push notification and email
@@ -357,6 +404,47 @@ void checkMedSchedule(void)
 
   if (pill3.isActive())
   {
+    medname = "Ranolazine";
+    compnum = "3";
+    if(client) {
+    client -> setCACert(rootCACertificate);
+
+    {
+      // Add a scoping block for HTTPClient https to make sure it is destroyed before WiFiClientSecure *client is 
+      HTTPClient https;
+  
+      Serial.print("[HTTPS] begin...\n");
+      if (https.begin(*client, request + "?medicinename=" + medname + "&compartmentnumber=" + compnum)) {  // HTTPS
+        Serial.print("[HTTPS] GET...\n");
+        // start connection and send HTTP header
+        int httpCode = https.GET();
+  
+        // httpCode will be negative on error
+        if (httpCode > 0) {
+          // HTTP header has been send and Server response header has been handled
+          Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
+  
+          // file found at server
+          if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+            String payload = https.getString();
+            Serial.println(payload);
+          }
+        } else {
+          Serial.printf("[HTTPS] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
+        }
+  
+        https.end();
+      } else {
+        Serial.printf("[HTTPS] Unable to connect\n");
+      }
+
+      // End extra scoping block
+    }
+  
+    delete client;
+  } else {
+    Serial.println("Unable to create client");
+  }
     digitalWrite(buzzerPin, HIGH);
 
     triggerPill3 = HIGH; // Activate Trigger to send push notification and email
