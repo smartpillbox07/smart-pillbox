@@ -28,23 +28,96 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SH110X.h>
 
+#include <Arduino.h>
+
 #include <WiFi.h>
+#include <WiFiMulti.h>
+
 #include <HTTPClient.h>
-// #include "HTTPSRedirect.h"
-#include <WiFiClientSecureBearSSL.h>
 
-const char* wifi_ssid = "HOMEWiFiBR";
-const char* wifi_password = "PLDTWiFiBRTorinoFamily_2023";
-String requestName = "https://script.google.com/macros/s/AKfycbzUigA_4Lku71Xcwj1bIo5QqDBuLPZjbzys90cKQkwBYCMq6dtXaJ3a3yxF3rj97golig/exec?";
-String medName = "";
-String compNum = "";
-// const char *GScriptId = “AKfycbxD75rbn5gBMBx5AKK_wttlbJtXRxRUr4TYZ1fG0iIPd_ZuCIVgkMmnoQclq71v53hMSA”;
+#include <WiFiClientSecure.h>
 
-// const char* host = "script.google.com";
-// const char* googleRedirHost = "script.googleusercontent.com";
+const char* rootCACertificate = \
+"-----BEGIN CERTIFICATE-----\n" \
+"MIIOXDCCDUSgAwIBAgIQC4qW7YghEegKnIaHXa2RujANBgkqhkiG9w0BAQsFADBG\n" \
+"MQswCQYDVQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZpY2VzIExM\n" \
+"QzETMBEGA1UEAxMKR1RTIENBIDFDMzAeFw0yNDAyMjYwODAzNThaFw0yNDA1MjAw\n" \
+"ODAzNTdaMBcxFTATBgNVBAMMDCouZ29vZ2xlLmNvbTBZMBMGByqGSM49AgEGCCqG\n" \
+"SM49AwEHA0IABDcjUHrrhpBkerx+V4G9nu+kN+XtZS3Bn67I82B090mbtY/EX4ob\n" \
+"Bbuj/96VxVcREzi1vBiiOP2gDCcFlHSx++Wjggw+MIIMOjAOBgNVHQ8BAf8EBAMC\n" \
+"B4AwEwYDVR0lBAwwCgYIKwYBBQUHAwEwDAYDVR0TAQH/BAIwADAdBgNVHQ4EFgQU\n" \
+"uZ6msB8g5B2jp3fMRSgOyO0pmoMwHwYDVR0jBBgwFoAUinR/r4XN7pXNPZzQ4kYU\n" \
+"83E1HScwagYIKwYBBQUHAQEEXjBcMCcGCCsGAQUFBzABhhtodHRwOi8vb2NzcC5w\n" \
+"a2kuZ29vZy9ndHMxYzMwMQYIKwYBBQUHMAKGJWh0dHA6Ly9wa2kuZ29vZy9yZXBv\n" \
+"L2NlcnRzL2d0czFjMy5kZXIwggnvBgNVHREEggnmMIIJ4oIMKi5nb29nbGUuY29t\n" \
+"ghYqLmFwcGVuZ2luZS5nb29nbGUuY29tggkqLmJkbi5kZXaCFSoub3JpZ2luLXRl\n" \
+"c3QuYmRuLmRldoISKi5jbG91ZC5nb29nbGUuY29tghgqLmNyb3dkc291cmNlLmdv\n" \
+"b2dsZS5jb22CGCouZGF0YWNvbXB1dGUuZ29vZ2xlLmNvbYILKi5nb29nbGUuY2GC\n" \
+"CyouZ29vZ2xlLmNsgg4qLmdvb2dsZS5jby5pboIOKi5nb29nbGUuY28uanCCDiou\n" \
+"Z29vZ2xlLmNvLnVrgg8qLmdvb2dsZS5jb20uYXKCDyouZ29vZ2xlLmNvbS5hdYIP\n" \
+"Ki5nb29nbGUuY29tLmJygg8qLmdvb2dsZS5jb20uY2+CDyouZ29vZ2xlLmNvbS5t\n" \
+"eIIPKi5nb29nbGUuY29tLnRygg8qLmdvb2dsZS5jb20udm6CCyouZ29vZ2xlLmRl\n" \
+"ggsqLmdvb2dsZS5lc4ILKi5nb29nbGUuZnKCCyouZ29vZ2xlLmh1ggsqLmdvb2ds\n" \
+"ZS5pdIILKi5nb29nbGUubmyCCyouZ29vZ2xlLnBsggsqLmdvb2dsZS5wdIIPKi5n\n" \
+"b29nbGVhcGlzLmNughEqLmdvb2dsZXZpZGVvLmNvbYIMKi5nc3RhdGljLmNughAq\n" \
+"LmdzdGF0aWMtY24uY29tgg9nb29nbGVjbmFwcHMuY26CESouZ29vZ2xlY25hcHBz\n" \
+"LmNughFnb29nbGVhcHBzLWNuLmNvbYITKi5nb29nbGVhcHBzLWNuLmNvbYIMZ2tl\n" \
+"Y25hcHBzLmNugg4qLmdrZWNuYXBwcy5jboISZ29vZ2xlZG93bmxvYWRzLmNughQq\n" \
+"Lmdvb2dsZWRvd25sb2Fkcy5jboIQcmVjYXB0Y2hhLm5ldC5jboISKi5yZWNhcHRj\n" \
+"aGEubmV0LmNughByZWNhcHRjaGEtY24ubmV0ghIqLnJlY2FwdGNoYS1jbi5uZXSC\n" \
+"C3dpZGV2aW5lLmNugg0qLndpZGV2aW5lLmNughFhbXBwcm9qZWN0Lm9yZy5jboIT\n" \
+"Ki5hbXBwcm9qZWN0Lm9yZy5jboIRYW1wcHJvamVjdC5uZXQuY26CEyouYW1wcHJv\n" \
+"amVjdC5uZXQuY26CF2dvb2dsZS1hbmFseXRpY3MtY24uY29tghkqLmdvb2dsZS1h\n" \
+"bmFseXRpY3MtY24uY29tghdnb29nbGVhZHNlcnZpY2VzLWNuLmNvbYIZKi5nb29n\n" \
+"bGVhZHNlcnZpY2VzLWNuLmNvbYIRZ29vZ2xldmFkcy1jbi5jb22CEyouZ29vZ2xl\n" \
+"dmFkcy1jbi5jb22CEWdvb2dsZWFwaXMtY24uY29tghMqLmdvb2dsZWFwaXMtY24u\n" \
+"Y29tghVnb29nbGVvcHRpbWl6ZS1jbi5jb22CFyouZ29vZ2xlb3B0aW1pemUtY24u\n" \
+"Y29tghJkb3VibGVjbGljay1jbi5uZXSCFCouZG91YmxlY2xpY2stY24ubmV0ghgq\n" \
+"LmZscy5kb3VibGVjbGljay1jbi5uZXSCFiouZy5kb3VibGVjbGljay1jbi5uZXSC\n" \
+"DmRvdWJsZWNsaWNrLmNughAqLmRvdWJsZWNsaWNrLmNughQqLmZscy5kb3VibGVj\n" \
+"bGljay5jboISKi5nLmRvdWJsZWNsaWNrLmNughFkYXJ0c2VhcmNoLWNuLm5ldIIT\n" \
+"Ki5kYXJ0c2VhcmNoLWNuLm5ldIIdZ29vZ2xldHJhdmVsYWRzZXJ2aWNlcy1jbi5j\n" \
+"b22CHyouZ29vZ2xldHJhdmVsYWRzZXJ2aWNlcy1jbi5jb22CGGdvb2dsZXRhZ3Nl\n" \
+"cnZpY2VzLWNuLmNvbYIaKi5nb29nbGV0YWdzZXJ2aWNlcy1jbi5jb22CF2dvb2ds\n" \
+"ZXRhZ21hbmFnZXItY24uY29tghkqLmdvb2dsZXRhZ21hbmFnZXItY24uY29tghhn\n" \
+"b29nbGVzeW5kaWNhdGlvbi1jbi5jb22CGiouZ29vZ2xlc3luZGljYXRpb24tY24u\n" \
+"Y29tgiQqLnNhZmVmcmFtZS5nb29nbGVzeW5kaWNhdGlvbi1jbi5jb22CFmFwcC1t\n" \
+"ZWFzdXJlbWVudC1jbi5jb22CGCouYXBwLW1lYXN1cmVtZW50LWNuLmNvbYILZ3Z0\n" \
+"MS1jbi5jb22CDSouZ3Z0MS1jbi5jb22CC2d2dDItY24uY29tgg0qLmd2dDItY24u\n" \
+"Y29tggsybWRuLWNuLm5ldIINKi4ybWRuLWNuLm5ldIIUZ29vZ2xlZmxpZ2h0cy1j\n" \
+"bi5uZXSCFiouZ29vZ2xlZmxpZ2h0cy1jbi5uZXSCDGFkbW9iLWNuLmNvbYIOKi5h\n" \
+"ZG1vYi1jbi5jb22CFGdvb2dsZXNhbmRib3gtY24uY29tghYqLmdvb2dsZXNhbmRi\n" \
+"b3gtY24uY29tgh4qLnNhZmVudXAuZ29vZ2xlc2FuZGJveC1jbi5jb22CDSouZ3N0\n" \
+"YXRpYy5jb22CFCoubWV0cmljLmdzdGF0aWMuY29tggoqLmd2dDEuY29tghEqLmdj\n" \
+"cGNkbi5ndnQxLmNvbYIKKi5ndnQyLmNvbYIOKi5nY3AuZ3Z0Mi5jb22CECoudXJs\n" \
+"Lmdvb2dsZS5jb22CFioueW91dHViZS1ub2Nvb2tpZS5jb22CCyoueXRpbWcuY29t\n" \
+"ggthbmRyb2lkLmNvbYINKi5hbmRyb2lkLmNvbYITKi5mbGFzaC5hbmRyb2lkLmNv\n" \
+"bYIEZy5jboIGKi5nLmNuggRnLmNvggYqLmcuY2+CBmdvby5nbIIKd3d3Lmdvby5n\n" \
+"bIIUZ29vZ2xlLWFuYWx5dGljcy5jb22CFiouZ29vZ2xlLWFuYWx5dGljcy5jb22C\n" \
+"Cmdvb2dsZS5jb22CEmdvb2dsZWNvbW1lcmNlLmNvbYIUKi5nb29nbGVjb21tZXJj\n" \
+"ZS5jb22CCGdncGh0LmNuggoqLmdncGh0LmNuggp1cmNoaW4uY29tggwqLnVyY2hp\n" \
+"bi5jb22CCHlvdXR1LmJlggt5b3V0dWJlLmNvbYINKi55b3V0dWJlLmNvbYIUeW91\n" \
+"dHViZWVkdWNhdGlvbi5jb22CFioueW91dHViZWVkdWNhdGlvbi5jb22CD3lvdXR1\n" \
+"YmVraWRzLmNvbYIRKi55b3V0dWJla2lkcy5jb22CBXl0LmJlggcqLnl0LmJlghph\n" \
+"bmRyb2lkLmNsaWVudHMuZ29vZ2xlLmNvbYIbZGV2ZWxvcGVyLmFuZHJvaWQuZ29v\n" \
+"Z2xlLmNughxkZXZlbG9wZXJzLmFuZHJvaWQuZ29vZ2xlLmNughhzb3VyY2UuYW5k\n" \
+"cm9pZC5nb29nbGUuY26CGmRldmVsb3Blci5jaHJvbWUuZ29vZ2xlLmNughh3ZWIu\n" \
+"ZGV2ZWxvcGVycy5nb29nbGUuY24wIQYDVR0gBBowGDAIBgZngQwBAgEwDAYKKwYB\n" \
+"BAHWeQIFAzA8BgNVHR8ENTAzMDGgL6AthitodHRwOi8vY3Jscy5wa2kuZ29vZy9n\n" \
+"dHMxYzMvUXFGeGJpOU00OGMuY3JsMIIBAwYKKwYBBAHWeQIEAgSB9ASB8QDvAHUA\n" \
+"SLDja9qmRzQP5WoC+p0w6xxSActW3SyB2bu/qznYhHMAAAGN5Kgj5wAABAMARjBE\n" \
+"AiAl/DsuiWV2bzGEm3CjQlMn9caqhg/72OfO8s2Xdu2kdgIgIzYonvPVLpgbS074\n" \
+"wIKggm26jnyfwjGZEmhfyeeyTi8AdgB2/4g/Crb7lVHCYcz1h7o0tKTNuyncaEIK\n" \
+"n+ZnTFo6dAAAAY3kqCPuAAAEAwBHMEUCIHNEL+zc96PCpvfKZL4+ih/E/BSp+NDG\n" \
+"yxmGZLhMWwnuAiEAsPAZwykqqNkOa6j0iThN7GKBW+SLKA19RxlQBGZaFTEwDQYJ\n" \
+"KoZIhvcNAQELBQADggEBAIYOWDqpVHdInrypMTlDuY4w14CITqRWa+UgrjmRWOCK\n" \
+"I5JE0Itv4h7+oc04+5g7Njm42NdRR4kPjfPtfvNUYvFxEdVtCf8yBTNTu+G782RR\n" \
+"Xe6V2iIy6DawUjet8PgDBGVYnAp5cm/ldIJBschT0kPuRqIaG69bXhjNryKcLZTx\n" \
+"n8pclPvAEPJRJ4RYnkiTqS2wu9NnCH4yKZj2Hcl714rlw+npdeQ5zWMSNV8R0nlu\n" \
+"goWsaLbuxarMskN3JO/LfFO+VKB2uXJNcsGu6YymlSqy3z79BsXrl2yqDvuuMByt\n" \
+"otFzZK8dElLYQERVOBeVfzHHgEsFkXRP3qcWKZRbryQ=\n" \
+"-----END CERTIFICATE-----\n";
 
-// const int httpsPort =  443;
-// HTTPSRedirect client(httpsPort);
 
 // String url = String(“/macros/s/”) + GScriptId + “/exec?”;
 
@@ -70,17 +143,18 @@ int inputPin = 36;
 
 // Buzzer for Alarm
 int buzzerPin = 2;
-
+WiFiMulti WiFiMulti;
 void setup() {
-  std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
-  client->setInsecure();
-  HTTPClient http;
-  http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
-  // Initialize serial and wait for port to open:
-  Serial.begin(9600);
-  // This delay gives the chance to wait for a Serial Monitor without blocking if none is found
-  delay(1500);
 
+  WiFi.mode(WIFI_STA);
+  WiFiMulti.addAP("2GFelicidade", "MiraMaria");
+
+  // wait for WiFi connection
+  Serial.print("Waiting for WiFi to connect...");
+  while ((WiFiMulti.run() != WL_CONNECTED)) {
+    Serial.print(".");
+  }
+  Serial.println(" connected");
   // Defined in thingProperties.h
   initProperties();
 
@@ -121,10 +195,50 @@ void setup() {
   triggerPill2 = LOW;
   triggerPill3 = LOW;
     //Initialize Wifi Connection
-    WiFi.begin(wifi_ssid, wifi_password);
 }
 
 void loop() {
+  WiFiClientSecure *client = new WiFiClientSecure;
+  if(client) {
+    client -> setCACert(rootCACertificate);
+
+    {
+      // Add a scoping block for HTTPClient https to make sure it is destroyed before WiFiClientSecure *client is 
+      HTTPClient https;
+  
+      Serial.print("[HTTPS] begin...\n");
+      if (https.begin(*client, "https://jigsaw.w3.org/HTTP/connection.html")) {  // HTTPS
+        Serial.print("[HTTPS] GET...\n");
+        // start connection and send HTTP header
+        int httpCode = https.GET();
+  
+        // httpCode will be negative on error
+        if (httpCode > 0) {
+          // HTTP header has been send and Server response header has been handled
+          Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
+  
+          // file found at server
+          if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+            String payload = https.getString();
+            Serial.println(payload);
+          }
+        } else {
+          Serial.printf("[HTTPS] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
+        }
+  
+        https.end();
+      } else {
+        Serial.printf("[HTTPS] Unable to connect\n");
+      }
+
+      // End extra scoping block
+    }
+  
+    delete client;
+  } else {
+    Serial.println("Unable to create client");
+  }
+
   ArduinoCloud.update();
 
   // Your code here
@@ -194,26 +308,6 @@ void checkMedSchedule(void)
     display.setCursor(0, 40);
     // Display static text
     display.print("Clopidogrel taken ");
-      int httpcode = http.GET();
-      if(httpcode > 0) {
-        Serial.println("Request okay");
-      } else {
-        Serial.println("Request failed");
-        Serial.println(http.errorToString(httpcode).c_str());
-      }
-      medName = "Clopidogrel";
-      compNum = "1";
-      
-      String requestPath = requestName + "medicinename=" + medName + "&compartmentnumber=" + compNum;
-      http.begin(requestPath.c_str());
-      http.end();
-      Serial.println(requestPath.c_str());
-      
-    //   if (!client.connected()){
-    //         Serial.println(“Connecting to client again…”);
-    //         client.connect(requestPath.c_str(), httpsPort);
-    // }
-    // client.printRedir(requestPath.c_str(), host, googleRedirHost);
   }
 
   if (pill2.isActive())
@@ -258,12 +352,6 @@ void checkMedSchedule(void)
     display.setCursor(0, 40);
     // Display static text
     display.print("Rosuvastatin taken ");
-      medName = "Rosuvastatin";
-      compNum = "2";
-      
-      String requestPath = requestName + "medicinename=" + medName + "&compartmentnumber=" + compNum;
-      http.begin(requestPath.c_str());
-      http.end();
 
   }
 
@@ -309,12 +397,6 @@ void checkMedSchedule(void)
     display.setCursor(0, 40);
     // Display static text
     display.print("Ranolazine taken");
-      medName = "Ranolazine";
-      compNum = "3";
-      
-      String requestPath = requestName + "medicinename=" + medName + "&compartmentnumber=" + compNum;
-      http.begin(requestPath.c_str());
-      http.end();
 
 
   }
